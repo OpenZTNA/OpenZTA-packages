@@ -100,4 +100,4 @@ journalctl -u openzta-daemon -b --no-pager > /tmp/openzta-journal.txt
 ```
 
 Attach the redacted diagnostics (review them first) to an issue. For a suspected vulnerability, use
-[SECURITY.md](../SECURITY.md) instead of a public issue.
+[SECURITY.md](https://github.com/OpenZTNA/OpenZTA-packages/blob/main/SECURITY.md) instead of a public issue.

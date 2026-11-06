@@ -85,4 +85,5 @@ cosign verify-attestation ghcr.io/openztna/openztna:stable \
 
 Do **not** install or run the artifact. A failed signature check can mean a corrupted download, a
 man‑in‑the‑middle, or a key mismatch. Re‑download over a clean network; if it still fails, open an issue
-(without disclosing anything sensitive) — and for a suspected compromise, follow [SECURITY.md](../SECURITY.md).
+(without disclosing anything sensitive) — and for a suspected compromise, follow
+[SECURITY.md](https://github.com/OpenZTNA/OpenZTA-packages/blob/main/SECURITY.md).

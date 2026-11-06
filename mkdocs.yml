@@ -1,0 +1,58 @@
+site_name: OpenZTNA packages
+site_description: Install and use the OpenZTNA zero-trust network access client
+site_url: https://openztna.github.io/OpenZTA-packages/
+repo_url: https://github.com/OpenZTNA/OpenZTA-packages
+repo_name: OpenZTNA/OpenZTA-packages
+docs_dir: docs
+site_dir: _site
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.instant
+    - content.code.copy
+    - search.suggest
+    - search.highlight
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.details
+  - pymdownx.inlinehilite
+
+nav:
+  - Home: index.md
+  - Overview & security model: overview.md
+  - System requirements: requirements.md
+  - Release channels & versioning: channels-and-versioning.md
+  - Install:
+      - Ubuntu & Debian: install/ubuntu-debian.md
+      - Kali Linux: install/kali.md
+      - Fedora, RHEL, Rocky & Alma: install/fedora-rhel.md
+      - Container images: install/containers.md
+  - Verifying signatures: verify-signatures.md
+  - Configuration reference: configuration.md
+  - ztactl CLI reference: cli.md
+  - Device enrollment: enrollment.md
+  - How to connect with Cisco Secure Access: cisco-secure-access.md
+  - Operations: operations.md
+  - Troubleshooting: troubleshooting.md
