@@ -43,6 +43,7 @@ jobs:
           touch _site/.nojekyll
           [ -d deb ] && cp -r deb _site/deb || true
           [ -d rpm ] && cp -r rpm _site/rpm || true
+          [ -f KEYS ] && cp KEYS _site/KEYS || true
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
