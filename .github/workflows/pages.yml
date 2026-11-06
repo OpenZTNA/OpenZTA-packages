@@ -1,7 +1,10 @@
 name: Docs site
 
-# Builds the MkDocs (Material) documentation site and deploys it to GitHub Pages.
-# Runs on free GitHub-hosted runners (this is a public repository).
+# Builds the MkDocs (Material) documentation site AND assembles the signed APT
+# (deb/) and DNF (rpm/) package repositories into one GitHub Pages site. This is
+# the single authoritative deployer: the publish workflow only updates deb/**,
+# rpm/** in the repo, and the resulting push re-runs this to redeploy the whole
+# site. Runs on free GitHub-hosted runners (this is a public repository).
 
 on:
   push:
@@ -9,6 +12,8 @@ on:
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
+      - 'deb/**'
+      - 'rpm/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -31,6 +36,13 @@ jobs:
           python-version: '3.x'
       - run: pip install "mkdocs-material==9.*"
       - run: mkdocs build
+      - name: Assemble package repositories into the site
+        run: |
+          # Serve the signed APT/DNF trees verbatim alongside the docs. .nojekyll
+          # keeps Pages from processing files/dirs (e.g. pool/, dists/) with Jekyll.
+          touch _site/.nojekyll
+          [ -d deb ] && cp -r deb _site/deb || true
+          [ -d rpm ] && cp -r rpm _site/rpm || true
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

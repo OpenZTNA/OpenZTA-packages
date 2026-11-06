@@ -1,0 +1,96 @@
+name: Publish package
+
+# Ingest a built .deb/.rpm, sign it and the repository metadata, and commit the
+# updated APT/DNF trees back to the repo. The commit to deb/** or rpm/** triggers
+# the "Docs site" workflow, which re-deploys the full site (docs + package repos)
+# to GitHub Pages.
+#
+# Source of artifacts (today): a URL you pass via workflow_dispatch, or a
+# repository_dispatch (type: packages-published) from the private build repo once
+# that handoff is wired. The GPG signing key lives only in this workflow, as the
+# OPENZTNA_SIGNING_KEY secret.
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "Release channel"
+        type: choice
+        options: [stable, nightly]
+        default: stable
+      version:
+        description: "Package version (e.g. 0.2.0 or 0.2.0~nightly...). Must be < 1.0."
+        required: true
+      deb_url:
+        description: "URL to the .deb to publish (optional)"
+        required: false
+      rpm_url:
+        description: "URL to the .rpm to publish (optional)"
+        required: false
+  repository_dispatch:
+    types: [packages-published]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      CHANNEL: ${{ github.event.inputs.channel || github.event.client_payload.channel || 'stable' }}
+      VERSION: ${{ github.event.inputs.version || github.event.client_payload.version }}
+      DEB_URL: ${{ github.event.inputs.deb_url || github.event.client_payload.deb_url }}
+      RPM_URL: ${{ github.event.inputs.rpm_url || github.event.client_payload.rpm_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install repo tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends apt-utils dpkg-dev createrepo-c rpm gnupg curl
+
+      - name: Enforce pre-1.0 version
+        run: bash scripts/check-version.sh "$VERSION"
+
+      - name: Import signing key
+        env:
+          OPENZTNA_SIGNING_KEY: ${{ secrets.OPENZTNA_SIGNING_KEY }}
+        run: |
+          if [ -z "$OPENZTNA_SIGNING_KEY" ]; then
+            echo "::error::OPENZTNA_SIGNING_KEY secret is not set — cannot sign the repository." >&2
+            exit 1
+          fi
+          printf '%s' "$OPENZTNA_SIGNING_KEY" | gpg --batch --import
+          GPG_KEY="$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr:/{print $10; exit}')"
+          echo "GPG_KEY=$GPG_KEY" >> "$GITHUB_ENV"
+          echo "imported signing key $GPG_KEY"
+
+      - name: Download artifacts
+        run: |
+          if [ -n "${DEB_URL:-}" ]; then curl -fsSL "$DEB_URL" -o "/tmp/openzta_${VERSION}_amd64.deb"; fi
+          if [ -n "${RPM_URL:-}" ]; then curl -fsSL "$RPM_URL" -o "/tmp/openzta-${VERSION}.x86_64.rpm"; fi
+          ls -l /tmp/openzta* 2>/dev/null || { echo "::error::no deb_url or rpm_url provided" >&2; exit 1; }
+
+      - name: Build + sign APT repo
+        if: ${{ env.DEB_URL != '' }}
+        run: bash scripts/build-apt-repo.sh --suite "$CHANNEL" --deb "/tmp/openzta_${VERSION}_amd64.deb" --gpg-key "$GPG_KEY"
+
+      - name: Build + sign DNF repo
+        if: ${{ env.RPM_URL != '' }}
+        run: bash scripts/build-dnf-repo.sh --suite "$CHANNEL" --rpm "/tmp/openzta-${VERSION}.x86_64.rpm" --gpg-key "$GPG_KEY"
+
+      - name: Commit updated repositories
+        run: |
+          git config user.name  "Vinny Parla"
+          git config user.email "vparla@users.noreply.github.com"
+          git add deb rpm
+          if git diff --cached --quiet; then
+            echo "no repository changes to commit"
+          else
+            git commit -m "publish: openzta ${VERSION} to ${CHANNEL} channel"
+            git push
+          fi

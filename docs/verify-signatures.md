@@ -12,11 +12,12 @@ Packages (`.deb`/`.rpm`) and the repository metadata (`InRelease`/`Release.gpg` 
   `https://openztna.github.io/OpenZTA-packages/deb/openztna-archive-keyring.gpg`
 - **Public key (armored, for DNF/manual import):**
   `https://openztna.github.io/OpenZTA-packages/rpm/openztna-archive-keyring.asc`
-- **Fingerprint:** `<PUBLISHED-KEY-FINGERPRINT>`
+- **Fingerprint:** `53C3 E89B 5469 E790 DA04  DDF0 561A 10E5 5E54 FCB3`
+  (full: `53C3E89B5469E790DA04DDF0561A10E55E54FCB3`)
 
-  > The fingerprint above is published here and on the repository's release notes. Always compare what
-  > you download against it before trusting the key. (This placeholder is filled in once the signing key
-  > is generated; until then, treat any key as untrusted.)
+  > Always compare the fingerprint of the key you downloaded against the value above (also published in
+  > each release's notes) before trusting it. The key is RSA‑4096 with a dedicated signing subkey; the
+  > repository metadata is signed by the subkey, which the published public key includes.
 
 Check a downloaded key's fingerprint:
 

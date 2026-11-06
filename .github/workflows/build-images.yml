@@ -1,0 +1,76 @@
+name: Container images
+
+# Build the OpenZTNA container image from the published APT repo, push to GHCR,
+# and sign it keyless with cosign (+ SBOM + provenance). Runs after a package is
+# published (repository_dispatch) or on demand. NOTE: this requires the package
+# to already be live in the APT repo — the image installs `openzta` from it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        type: choice
+        options: [stable, nightly]
+        default: stable
+      version:
+        description: "Version to tag the image (e.g. 0.2.0)"
+        required: true
+  repository_dispatch:
+    types: [packages-published]
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+concurrency:
+  group: images-${{ github.event.inputs.channel || github.event.client_payload.channel || 'stable' }}
+  cancel-in-progress: true
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    env:
+      CHANNEL: ${{ github.event.inputs.channel || github.event.client_payload.channel || 'stable' }}
+      VERSION: ${{ github.event.inputs.version || github.event.client_payload.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute image tags
+        id: tags
+        run: |
+          # Docker tags can't contain '~' or '+' (used in nightly versions): sanitize.
+          safe="$(printf '%s' "$VERSION" | tr '~+' '--')"
+          echo "channel_tag=ghcr.io/openztna/openztna:${CHANNEL}" >> "$GITHUB_OUTPUT"
+          echo "version_tag=ghcr.io/openztna/openztna:${safe}"    >> "$GITHUB_OUTPUT"
+          { echo "list<<EOF"; \
+            echo "ghcr.io/openztna/openztna:${CHANNEL}"; \
+            echo "ghcr.io/openztna/openztna:${safe}"; \
+            [ "$CHANNEL" = stable ] && echo "ghcr.io/openztna/openztna:latest"; \
+            echo "EOF"; } >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: sigstore/cosign-installer@v3
+
+      - name: Build & push
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: images/ubuntu/Dockerfile
+          build-args: |
+            CHANNEL=${{ env.CHANNEL }}
+          push: true
+          tags: ${{ steps.tags.outputs.list }}
+          provenance: true
+          sbom: true
+
+      - name: Sign image (keyless)
+        run: cosign sign --yes "ghcr.io/openztna/openztna@${{ steps.build.outputs.digest }}"
